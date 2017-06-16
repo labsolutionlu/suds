@@ -133,9 +133,8 @@ class Typed(Core):
         if current == content.type:
             self.resolver.pop()
         else:
-            raise Exception, \
-                'content (end) mismatch: top=(%s) cont=(%s)' % \
-                (current, content)
+            raise Exception('content (end) mismatch: top=(%s) cont=(%s)' % \
+                (current, content))
     
     def node(self, content):
         #
@@ -145,8 +144,7 @@ class Typed(Core):
         ns = content.type.namespace()
         if content.type.form_qualified:
             node = Element(content.tag, ns=ns)
-            if ns[0]:
-                node.addPrefix(ns[0], ns[1])
+            node.addPrefix(ns[0], ns[1])
         else:
             node = Element(content.tag)
         self.encode(node, content)

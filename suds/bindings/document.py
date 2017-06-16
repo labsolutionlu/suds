@@ -22,6 +22,7 @@ from logging import getLogger
 from suds import *
 from suds.bindings.binding import Binding
 from suds.sax.element import Element
+from suds.sax.element import Attribute
 
 log = getLogger(__name__)
 
@@ -54,12 +55,18 @@ class Document(Binding):
         else:
             root = []
         n = 0
+        # KPA: Applied patch from https://fedorahosted.org/suds/ticket/21
         for pd in self.param_defs(method):
             if n < len(args):
                 value = args[n]
+            elif pd[1].isattr():
+                value = kwargs.get('_'+pd[0]) 
             else:
                 value = kwargs.get(pd[0])
             n += 1
+            if pd[1].isattr() and value: 
+                root.attributes.append(Attribute(pd[0], value)) 
+                continue
             p = self.mkparam(method, pd, value)
             if p is None:
                 continue
@@ -121,8 +128,8 @@ class Document(Binding):
         for p in pts:
             resolved = p[1].resolve()
             for child, ancestry in resolved:
-                if child.isattr():
-                    continue
+                #if child.isattr():
+                #    continue
                 if self.bychoice(ancestry):
                     log.debug(
                         '%s\ncontained by <choice/>, excluded as param for %s()',

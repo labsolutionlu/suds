@@ -96,7 +96,7 @@ class DocumentReader(Reader):
         content = fp.read()
         fp.close()
         ctx = self.plugins.document.loaded(url=url, document=content)
-        content = ctx.document 
+        content = ctx.document.decode()
         sax = Parser()
         return sax.parse(string=content)
     

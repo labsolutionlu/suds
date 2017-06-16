@@ -99,11 +99,6 @@ class Options(Skin):
                 - default: 0
         - B{plugins} - A plugin container.
                 - type: I{list}
-        - B{nosend} - Create the soap envelope but don't send.
-            When specified, method invocation returns a I{RequestContext}
-            instead of sending it.
-                - type: I{bool}
-                - default: False
     """    
     def __init__(self, **kwargs):
         domain = __name__
@@ -111,9 +106,9 @@ class Options(Skin):
             Definition('cache', Cache, NoCache()),
             Definition('faults', bool, True),
             Definition('transport', Transport, None, TpLinker()),
-            Definition('service', (int, basestring), None),
-            Definition('port', (int, basestring), None),
-            Definition('location', basestring, None),
+            Definition('service', (int, str), None),
+            Definition('port', (int, str), None),
+            Definition('location', str, None),
             Definition('soapheaders', (), ()),
             Definition('wsse', Security, None),
             Definition('doctor', Doctor, None),
@@ -124,6 +119,5 @@ class Options(Skin):
             Definition('autoblend', bool, False),
             Definition('cachingpolicy', int, 0),
             Definition('plugins', (list, tuple), []),
-            Definition('nosend', bool, False),
         ]
         Skin.__init__(self, domain, definitions, kwargs)

@@ -169,13 +169,9 @@ class Attribute:
 
     def __str__(self):
         """ get an xml string representation """
-        return unicode(self).encode('utf-8')
-    
-    def __unicode__(self):
-        """ get an xml string representation """
         n = self.qname()
         if self.hasText():
             v = self.value.escape()
         else:
             v = self.value
-        return u'%s="%s"' % (n, v)
+        return '%s="%s"' % (n, v)

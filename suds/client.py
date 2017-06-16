@@ -21,15 +21,15 @@ See I{README.txt}
 
 import suds
 import suds.metrics as metrics
-from cookielib import CookieJar
+from http.cookiejar import CookieJar
 from suds import *
 from suds.reader import DefinitionsReader
 from suds.transport import TransportError, Request
 from suds.transport.https import HttpAuthenticated
 from suds.servicedefinition import ServiceDefinition
 from suds import sudsobject
-from sudsobject import Factory as InstFactory
-from sudsobject import Object
+from .sudsobject import Factory as InstFactory
+from .sudsobject import Object
 from suds.resolver import PathResolver
 from suds.builder import Builder
 from suds.wsdl import Definitions
@@ -38,7 +38,7 @@ from suds.sax.document import Document
 from suds.sax.parser import Parser
 from suds.options import Options
 from suds.properties import Unskin
-from urlparse import urlparse
+from urllib.parse import urlparse
 from copy import deepcopy
 from suds.plugin import PluginContainer
 from logging import getLogger
@@ -188,16 +188,13 @@ class Client(object):
         return clone
  
     def __str__(self):
-        return unicode(self)
-        
-    def __unicode__(self):
         s = ['\n']
         build = suds.__build__.split()
         s.append('Suds ( https://fedorahosted.org/suds/ )')
         s.append('  version: %s' % suds.__version__)
         s.append(' %s  build: %s' % (build[0], build[1]))
         for sd in self.sd:
-            s.append('\n\n%s' % unicode(sd))
+            s.append('\n\n%s' % str(sd))
         return ''.join(s)
 
 
@@ -239,7 +236,7 @@ class Factory:
         else:
             try:
                 result = self.builder.build(type)
-            except Exception, e:
+            except Exception as e:
                 log.error("create '%s' failed", name, exc_info=True)
                 raise BuildError(name, e)
         timer.stop()
@@ -328,20 +325,20 @@ class ServiceSelector:
         """
         service = None
         if not len(self.__services):
-            raise Exception, 'No services defined'
+            raise Exception('No services defined')
         if isinstance(name, int):
             try:
                 service = self.__services[name]
                 name = service.name
             except IndexError:
-                raise ServiceNotFound, 'at [%d]' % name
+                raise ServiceNotFound('at [%d]' % name)
         else:
             for s in self.__services:
                 if name == s.name:
                     service = s
                     break
         if service is None:
-            raise ServiceNotFound, name
+            raise ServiceNotFound(name)
         return PortSelector(self.__client, service.ports, name)
     
     def __ds(self):
@@ -429,13 +426,13 @@ class PortSelector:
         """
         port = None
         if not len(self.__ports):
-            raise Exception, 'No ports defined: %s' % self.__qn
+            raise Exception('No ports defined: %s' % self.__qn)
         if isinstance(name, int):
             qn = '%s[%d]' % (self.__qn, name)
             try:
                 port = self.__ports[name]
             except IndexError:
-                raise PortNotFound, qn
+                raise PortNotFound(qn)
         else:
             qn = '.'.join((self.__qn, name))
             for p in self.__ports:
@@ -443,7 +440,7 @@ class PortSelector:
                     port = p
                     break
         if port is None:
-            raise PortNotFound, qn
+            raise PortNotFound(qn)
         qn = '.'.join((self.__qn, port.name))
         return MethodSelector(self.__client, port.methods, qn)
     
@@ -504,7 +501,7 @@ class MethodSelector:
         m = self.__methods.get(name)
         if m is None:
             qn = '.'.join((self.__qn, name))
-            raise MethodNotFound, qn
+            raise MethodNotFound(qn)
         return Method(self.__client, m)
 
 
@@ -536,7 +533,7 @@ class Method:
         if not self.faults():
             try:
                 return client.invoke(args, kwargs)
-            except WebFault, e:
+            except WebFault as e:
                 return (500, e)
         else:
             return client.invoke(args, kwargs)
@@ -620,9 +617,7 @@ class SoapClient:
         binding = self.method.binding.input
         transport = self.options.transport
         retxml = self.options.retxml
-        nosend = self.options.nosend
         prettyxml = self.options.prettyxml
-        timer = metrics.Timer()
         log.debug('sending to (%s)\nmessage:\n%s', location, soapenv)
         try:
             self.last_sent(soapenv)
@@ -632,24 +627,17 @@ class SoapClient:
                 soapenv = soapenv.str()
             else:
                 soapenv = soapenv.plain()
-            soapenv = soapenv.encode('utf-8')
-            ctx = plugins.message.sending(envelope=soapenv)
-            soapenv = ctx.envelope
-            if nosend:
-                return RequestContext(self, binding, soapenv)
+            plugins.message.sending(envelope=soapenv)
             request = Request(location, soapenv)
             request.headers = self.headers()
-            timer.start()
             reply = transport.send(request)
-            timer.stop()
-            metrics.log.debug('waited %s on server reply', timer)
             ctx = plugins.message.received(reply=reply.message)
             reply.message = ctx.reply
             if retxml:
                 result = reply.message
             else:
                 result = self.succeeded(binding, reply.message)
-        except TransportError, e:
+        except TransportError as e:
             if e.httpcode in (202,204):
                 result = None
             else:
@@ -664,8 +652,6 @@ class SoapClient:
         @rtype: dict
         """
         action = self.method.soap.action
-        if isinstance(action, unicode):
-            action = action.encode('utf-8')
         stock = { 'Content-Type' : 'text/xml; charset=utf-8', 'SOAPAction': action }
         result = dict(stock, **self.options.headers)
         log.debug('headers = %s', result)
@@ -750,7 +736,7 @@ class SimClient(SoapClient):
     @classmethod
     def simulation(cls, kwargs):
         """ get whether loopback has been specified in the I{kwargs}. """
-        return kwargs.has_key(SimClient.injkey)
+        return SimClient.injkey in kwargs
         
     def invoke(self, args, kwargs):
         """
@@ -793,52 +779,3 @@ class SimClient(SoapClient):
             return (500, p)
         else:
             return (500, None)
-        
-
-class RequestContext:
-    """
-    A request context.
-    Returned when the ''nosend'' options is specified.
-    @ivar client: The suds client.
-    @type client: L{Client}
-    @ivar binding: The binding for this request.
-    @type binding: I{Binding}
-    @ivar envelope: The request soap envelope.
-    @type envelope: str
-    """
-    
-    def __init__(self, client, binding, envelope):
-        """
-        @param client: The suds client.
-        @type client: L{Client}
-        @param binding: The binding for this request.
-        @type binding: I{Binding}
-        @param envelope: The request soap envelope.
-        @type envelope: str
-        """
-        self.client = client
-        self.binding = binding
-        self.envelope = envelope
-        
-    def succeeded(self, reply):
-        """
-        Re-entry for processing a successful reply.
-        @param reply: The reply soap envelope.
-        @type reply: str
-        @return: The returned value for the invoked method.
-        @rtype: object 
-        """
-        options = self.client.options
-        plugins = PluginContainer(options.plugins)
-        ctx = plugins.message.received(reply=reply)
-        reply = ctx.reply
-        return self.client.succeeded(self.binding, reply)
-    
-    def failed(self, error):
-        """
-        Re-entry for processing a failure reply.
-        @param error: The error returned by the transport.
-        @type error: A suds I{TransportError}.
-        """
-        return self.client.failed(self.binding, error)
-        

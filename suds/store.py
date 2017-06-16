@@ -20,7 +20,7 @@ with the suds lib.  Also, contains classes for accessing
 these documents.
 """
 
-from StringIO import StringIO
+from io import BytesIO
 from logging import getLogger
 
 log = getLogger(__name__)
@@ -30,7 +30,7 @@ log = getLogger(__name__)
 # Soap section 5 encoding schema.
 #
 encoding = \
-"""<?xml version="1.0" encoding="UTF-8"?>
+b"""<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://schemas.xmlsoap.org/soap/encoding/" targetNamespace="http://schemas.xmlsoap.org/soap/encoding/">
         
  <xs:attribute name="root">
@@ -556,7 +556,7 @@ class DocumentStore:
         @param url: A document URL.
         @type url: str
         @return: A file pointer to the document.
-        @rtype: StringIO
+        @rtype: BytesIO
         """
         protocol, location = self.split(url)
         if protocol == self.protocol:
@@ -570,14 +570,14 @@ class DocumentStore:
         @param location: The I{location} part of a URL.
         @type location: str
         @return: An input stream to the document.
-        @rtype: StringIO
+        @rtype: BytesIO
         """
         try:
             content = self.store[location]
-            return StringIO(content)
+            return BytesIO(content)
         except:
             reason = 'location "%s" not in document store' % location
-            raise Exception, reason
+            raise Exception(reason)
         
     def split(self, url):
         """
